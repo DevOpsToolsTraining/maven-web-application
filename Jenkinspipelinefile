@@ -1,0 +1,56 @@
+node
+
+{
+
+def mavenHome = tool name: "Maven-3.6.2"
+
+properties([
+    buildDiscarder(logRotator(numToKeepStr: '3')),
+    pipelineTriggers([
+        pollSCM('* * * * *')
+    ])
+  ])
+
+stage('codecheck')
+{
+    git credentialsId: '8b02aedf-890c-416f-ad88-9df951913bb4', url: 'https://github.com/DevOpsToolsTraining/maven-web-application.git'
+}
+
+
+stage('Build')
+
+{
+    sh "${mavenHome}/bin/mvn clean package"
+ 
+}
+
+stage('SonarQubeReport')
+{
+    sh "${mavenHome}/bin/mvn sonar:sonar"
+}
+
+stage('uploadartifactsintoNexus')
+
+{
+sh "${mavenHome}/bin/mvn deploy"
+}
+
+stage('DeployArtifactintoTomcat')
+{
+    
+    sshagent(['169bdca1-3ca0-44fc-b434-41dcb8739a04'])
+    {
+    sh "scp -o StrictHostKeyChecking=no target/maven-web-application.war ec2-user@52.66.166.228:/opt/apache-tomcat-9.0.29/webapps/"
+}
+}
+
+stage("EmailNotification")
+
+{
+    emailext body: '''Regards,
+Brahmaiah''', subject: 'pipeline job is success', to: 'sjbrahmaiah@gmail.com,brahmaiahsj003@gmail.com'
+    
+}
+
+
+}
